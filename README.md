@@ -64,6 +64,7 @@ Incoming Support Ticket
                  v
           JSON Webhook Response
 ```
+![Workflow Overview](workflow-overview.png)
 
 ## Ticket Categories
 
