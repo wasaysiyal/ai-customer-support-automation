@@ -1,0 +1,604 @@
+{
+  "name": "Customer Support AI Routing - Test Version",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "support-ticket",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "27dcd02d-bb12-4f39-9625-65df3e0eb2a0",
+      "name": "Receive Support Request",
+      "position": [
+        0,
+        208
+      ],
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "webhookId": "4dc3abee-d45e-4b35-8220-8e1973961a85",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "customer_email",
+              "name": "customer_email",
+              "type": "string",
+              "value": "={{ $json.body.customer_email }}"
+            },
+            {
+              "id": "customer_name",
+              "name": "customer_name",
+              "type": "string",
+              "value": "={{ $json.body.customer_name }}"
+            },
+            {
+              "id": "subject",
+              "name": "subject",
+              "type": "string",
+              "value": "={{ $json.body.subject }}"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "type": "string",
+              "value": "={{ $json.body.message }}"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "type": "string",
+              "value": "={{ $json.body.source }}"
+            },
+            {
+              "id": "customer_tier",
+              "name": "customer_tier",
+              "type": "string",
+              "value": "={{ $json.body.customer_tier }}"
+            },
+            {
+              "id": "purchase_count",
+              "name": "purchase_count",
+              "type": "number",
+              "value": "={{ $json.body.purchase_count }}"
+            },
+            {
+              "id": "last_contact",
+              "name": "last_contact",
+              "type": "string",
+              "value": "={{ $json.body.last_contact }}"
+            }
+          ]
+        },
+        "includeOtherFields": "={{ false }}",
+        "options": {}
+      },
+      "id": "e6bf5af8-6695-4fa3-8393-b77d62261030",
+      "name": "Mock CRM Data",
+      "position": [
+        352,
+        208
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "\nconst aiResult = JSON.parse($json.response);\n\nconst ticket = $('Mock CRM Data').first().json;\n\nconst text = `${ticket.subject} ${ticket.message}`.toLowerCase();\n\nlet category = aiResult.category;\n\n// Account-related requests take priority\nif (/log ?in|login|sign ?in|password|forgot.*pass|reset.*pass|account access|cannot access.*account|unable to access.*account/.test(text)) {\n  category = 'Account';\n}\n// Billing-related requests\nelse if (/payment|refund|charged|charge|invoice|subscription|billing/.test(text)) {\n  category = 'Billing';\n}\n// Technical issues\nelse if (/crash|bug|error|upload failure|not working|technical/.test(text)) {\n  category = 'Technical';\n}\n// Everything else\nelse {\n  category = 'General';\n}\n\nreturn {\n  ...ticket,\n  category,\n  explanation: aiResult.explanation\n};\n"
+      },
+      "id": "b5e97de1-68c5-459e-8cf2-30f151022dc6",
+      "name": "Parse AI Response",
+      "position": [
+        880,
+        208
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.category }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "Technical",
+                    "id": "77971f14-8b00-4ef1-8029-301c5e49241d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Technical Team"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.category }}",
+                    "operator": {
+                      "operation": "equals",
+                      "type": "string"
+                    },
+                    "rightValue": "Billing",
+                    "id": "6b4734a0-026c-4712-bd3e-12b037618ea1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Billing Team"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "91dab4f7-138d-4062-bdae-38fa0d4a8485",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "General",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Auto Response"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b1b61859-5c5e-4374-aa87-afd234c10018",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "Account",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Account Team"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "abbffda1-1ab1-4e26-aafd-9b2d4808b308",
+      "name": "Route by Category",
+      "position": [
+        1104,
+        208
+      ],
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "route_taken",
+              "name": "route_taken",
+              "type": "string",
+              "value": "auto_response"
+            },
+            {
+              "id": "email_subject",
+              "name": "email_subject",
+              "type": "string",
+              "value": "=Re: {{ $json.subject }}"
+            },
+            {
+              "id": "email_body",
+              "name": "email_body",
+              "type": "string",
+              "value": "=Hello {{ $json.customer_name }},\n\nThank you for contacting our support team.\n\nWe have received your request regarding: {{ $json.subject }}.\n\nOur team will review the issue and get back to you with the next steps.\n\nThank you for your patience.\n\nBest regards,\nSupport Team"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "709ac806-6278-433f-bf01-4bdf2bc2c81c",
+      "name": "Prepare Auto Response",
+      "position": [
+        1360,
+        0
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "route_taken",
+              "name": "route_taken",
+              "type": "string",
+              "value": "technical_team"
+            },
+            {
+              "id": "notification",
+              "name": "notification",
+              "type": "string",
+              "value": "=🔧 TECHNICAL SUPPORT TICKET\n\nCustomer: {{ $json.customer_name }} ({{ $json.customer_tier }})\nEmail: {{ $json.customer_email }}\nSubject: {{ $json.subject }}\nIssue: {{ $json.message }}\nAI Explanation: {{ $json.explanation }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "6c549956-68c2-4a30-8073-328c40160560",
+      "name": "Prepare Tech Alert",
+      "position": [
+        1360,
+        144
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "route_taken",
+              "name": "route_taken",
+              "type": "string",
+              "value": "billing_team"
+            },
+            {
+              "id": "notification",
+              "name": "notification",
+              "type": "string",
+              "value": "=💳 BILLING TICKET\n\nCustomer: {{ $json.customer_name }} ({{ $json.customer_tier }})\nEmail: {{ $json.customer_email }}\nSubject: {{ $json.subject }}\nMessage: {{ $json.message }}\nAI Explanation: {{ $json.explanation }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "61570d20-8fa7-4081-86d7-097d24c745b5",
+      "name": "Prepare Billing Alert",
+      "position": [
+        1360,
+        432
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "route_taken",
+              "name": "route_taken",
+              "type": "string",
+              "value": "general_queue"
+            },
+            {
+              "id": "notification",
+              "name": "notification",
+              "type": "string",
+              "value": "=📩 GENERAL SUPPORT TICKET\n\nCustomer: {{ $json.customer_name }}\nEmail: {{ $json.customer_email }}\nCategory: {{ $json.category }}\nSubject: {{ $json.subject }}\nMessage: {{ $json.message }}\nAI Explanation: {{ $json.explanation }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "3fdc17ab-d85d-4d0e-b728-a5364717520d",
+      "name": "Prepare General Queue",
+      "position": [
+        1360,
+        576
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ticket_id",
+              "name": "ticket_id",
+              "type": "string",
+              "value": "=TICKET-{{ $now.toFormat('yyyyMMdd-HHmmss') }}"
+            },
+            {
+              "id": "processed_at",
+              "name": "processed_at",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5fb0ad36-463b-45a4-8533-5df7df0cfe60",
+      "name": "Build Final Response",
+      "position": [
+        1824,
+        304
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "=\n{{ JSON.stringify({\n  status: 'success',\n  ticket_id: $json.ticket_id,\n  route: $json.route_taken,\n  category: $json.category,\n  explanation: $json.explanation,\n  email_subject: $json.email_subject,\n  email_body: $json.email_body,\n  notification: $json.notification,\n  customer_name: $json.customer_name,\n  customer_email: $json.customer_email,\n  processed_at: $json.processed_at\n}) }}\n",
+        "options": {}
+      },
+      "id": "cd52fbc3-79ba-49c1-8bcd-0a09b83e65b3",
+      "name": "Respond with Result",
+      "position": [
+        2048,
+        304
+      ],
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama3.2:3b\",\n  \"stream\": false,\n  \"format\": \"json\",\n  \"prompt\": \"You are a customer support ticket classifier. Classify into exactly one category: Billing, Technical, Account, or General. Account: login, forgotten passwords, password resets, account access, profile updates. Billing: payments, charges, refunds, invoices, subscriptions. Technical: crashes, software bugs, upload failures, errors. General: all other enquiries. Priority: If login, password, password reset, or account access is mentioned, choose Account. If payment, refund, or charges are mentioned, choose Billing. If crashes, bugs, or application errors are mentioned, choose Technical. Return only valid JSON with keys category and explanation. Subject: {{ $json.subject }}. Message: {{ $json.message }}.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        576,
+        208
+      ],
+      "id": "17021653-ef53-4256-8874-9cc3638e82e5",
+      "name": "Ollama AI Classification"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "98255167-1388-4286-bbae-19eb0bc749ab",
+              "name": "route_taken",
+              "value": "account_team",
+              "type": "string"
+            },
+            {
+              "id": "f62affdf-8f63-4c4c-be83-0ffd00009e2e",
+              "name": "notification",
+              "value": "=👤 ACCOUNT SUPPORT TICKET\n\nCustomer: {{ $json.customer_name }} ({{ $json.customer_tier }})\nEmail: {{ $json.customer_email }}\nSubject: {{ $json.subject }}\nIssue: {{ $json.message }}\nAI Explanation: {{ $json.explanation }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1360,
+        288
+      ],
+      "id": "d41a3a19-59b9-4eb9-9b32-83809691e821",
+      "name": "Prepare Account Alert"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Support Request": {
+      "main": [
+        [
+          {
+            "node": "Mock CRM Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock CRM Data": {
+      "main": [
+        [
+          {
+            "node": "Ollama AI Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Route by Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Category": {
+      "main": [
+        [
+          {
+            "node": "Prepare Tech Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Billing Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Auto Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Account Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare General Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Auto Response": {
+      "main": [
+        [
+          {
+            "node": "Build Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Tech Alert": {
+      "main": [
+        [
+          {
+            "node": "Build Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Billing Alert": {
+      "main": [
+        [
+          {
+            "node": "Build Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare General Queue": {
+      "main": [
+        [
+          {
+            "node": "Build Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Final Response": {
+      "main": [
+        [
+          {
+            "node": "Respond with Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama AI Classification": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Account Alert": {
+      "main": [
+        [
+          {
+            "node": "Build Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1c05a477-d330-4c5e-8aa0-9f5e1b6c0075",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d2e2c1587adb35d512032b1309854b87e53e718536181f42405bb9702bd6e9a0"
+  },
+  "nodeGroups": [],
+  "id": "CcAbiFdHtnS3APOo",
+  "tags": []
+}
