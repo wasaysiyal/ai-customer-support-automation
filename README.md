@@ -28,7 +28,7 @@ This workflow automates the initial classification and routing process:
 | Docker | Local n8n environment |
 
 ## Workflow Architecture
-![Workflow Overview](workflow-overview.png)
+![Workflow Overview](ss1.png)
 ```text
 Incoming Support Ticket
           |
