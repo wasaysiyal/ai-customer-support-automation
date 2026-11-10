@@ -28,7 +28,7 @@ This workflow automates the initial classification and routing process:
 | Docker | Local n8n environment |
 
 ## Workflow Architecture
-
+![Workflow Overview](workflow-overview.png)
 ```text
 Incoming Support Ticket
           |
@@ -64,7 +64,6 @@ Incoming Support Ticket
                  v
           JSON Webhook Response
 ```
-![Workflow Overview](workflow-overview.png)
 
 ## Ticket Categories
 
